@@ -36,6 +36,9 @@ namespace TLDOverhaul.Crafting
         /// <summary>Other systems (building) can add requirements. Return a reason string to block the recipe, or null to allow it.</summary>
         public static readonly List<Func<BlueprintData, string>> ExtraGates = new List<Func<BlueprintData, string>>();
 
+        /// <summary>Recipes other systems consider undiscovered (e.g. missing schematic) are left out of the list entirely.</summary>
+        public static readonly List<Func<BlueprintData, bool>> ExtraHidden = new List<Func<BlueprintData, bool>>();
+
         /// <summary>The interactive-crafting system claims recipes it will judge by hand: no random failure roll or quality here.</summary>
         public static Func<BlueprintData, bool> InteractiveClaims;
 
@@ -127,6 +130,10 @@ namespace TLDOverhaul.Crafting
         /// <summary>Recipes two or more tiers above you are not yet "discovered".</summary>
         public bool Hidden(BlueprintData bp)
         {
+            foreach (var h in ExtraHidden)
+            {
+                try { if (h(bp)) return true; } catch (Exception e) { PatchLog.Error("Crafting.ExtraHidden", e); }
+            }
             var req = Requirement(bp);
             if (!req.Skill.HasValue) return false;
             return req.Tier > Services.Skills.GetTier(req.Skill.Value) + 1;

@@ -396,11 +396,12 @@ namespace TLDOverhaul.Weapons
                     int have = GameUtil.CountInInventory(baseName);
                     int tier = Services.Skills.GetTier(SkillId.Gunsmithing);
                     int n = Math.Min(5, have);
-                    bool ok = tier >= 1 && have >= 5 && Services.Scrap.GetScrap(ScrapGrade.Low) >= 1;
+                    bool schem = Services.Regional.HasSchematic("hollow_point");
+                    bool ok = schem && tier >= 1 && have >= 5 && Services.Scrap.GetScrap(ScrapGrade.Low) >= 1;
                     yield return new BenchEntry
                     {
                         Label = string.Format("Swage 5 {0} hollow points", c),
-                        Detail = ok ? "5 rounds + 1 low scrap, 55 min" : (tier < 1 ? "needs Gunsmithing II" : "needs 5 rounds and 1 low scrap"),
+                        Detail = ok ? "5 rounds + 1 low scrap, 55 min" : (!schem ? "needs the hollow-point schematic (somewhere in the world)" : tier < 1 ? "needs Gunsmithing II" : "needs 5 rounds and 1 low scrap"),
                         Enabled = ok,
                         Run = () => CraftHollowPoints(c, baseName),
                     };
@@ -484,19 +485,23 @@ namespace TLDOverhaul.Weapons
             bool forgeOk = !spec.NeedsIndustrialForge || bench.ForgeClass == ForgeClass.Industrial;
             bool mats = spec.Materials == null || spec.Materials.All(m => { var p = m.Split(':'); return GameUtil.CountInInventory(p[0]) >= int.Parse(p[1]); });
             bool scrap = !spec.Scrap.HasValue || Services.Scrap.GetScrap(spec.Scrap.Value) >= spec.ScrapUnits;
+            bool regional = spec.Regional == null || spec.Regional.All(m => { var p = m.Split(':'); return Services.Regional.Count(p[0]) >= int.Parse(p[1]); });
             string why = !skill ? "needs " + SkillMap.Display(spec.CraftSkill) + " " + SkillMap.Roman[spec.CraftTier]
                        : !forgeOk ? "needs the industrial forge"
                        : !mats ? "needs " + string.Join(", ", spec.Materials)
-                       : !scrap ? "needs " + spec.ScrapUnits + " " + spec.Scrap + " scrap" : "~60 min";
+                       : !scrap ? "needs " + spec.ScrapUnits + " " + spec.Scrap + " scrap"
+                       : !regional ? "needs " + string.Join(", ", spec.Regional.Select(m => { var p = m.Split(':'); return p[1] + " " + Services.Regional.Display(p[0]); }))
+                       : "~60 min";
             return new BenchEntry
             {
                 Label = "Make " + spec.Name,
                 Detail = why,
-                Enabled = skill && forgeOk && mats && scrap && (spec.Station != BenchKind.Forge || bench.ForgeHot),
+                Enabled = skill && forgeOk && mats && scrap && regional && (spec.Station != BenchKind.Forge || bench.ForgeHot),
                 Run = () =>
                 {
                     if (spec.Scrap.HasValue && !Services.Scrap.TryConsume(spec.Scrap.Value, spec.ScrapUnits)) { BenchMenu.Say("Not enough scrap."); return; }
                     if (spec.Materials != null) foreach (var m in spec.Materials) { var p = m.Split(':'); GameUtil.RemoveFromInventory(p[0], int.Parse(p[1])); }
+                    if (spec.Regional != null) foreach (var m in spec.Regional) { var p = m.Split(':'); Services.Regional.TryConsume(p[0], int.Parse(p[1])); }
                     TimedAction.Run("Making " + spec.Name, 60f, ok =>
                     {
                         if (!ok) { GameUtil.Hud("You give up; the materials are wasted."); return; }

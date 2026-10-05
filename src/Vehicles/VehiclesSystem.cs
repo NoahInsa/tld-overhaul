@@ -336,9 +336,12 @@ namespace TLDOverhaul.Vehicles
             switch (p)
             {
                 case VPart.Engine:
-                    needTier = 2; need = "2 mid scrap" + (v.C(p) < 0.3f ? ", 1 gasket" : "");
-                    have = () => Services.Scrap.GetScrap(ScrapGrade.Mid) >= 2 && (v.C(p) >= 0.3f || Parts("Gasket") > 0);
-                    consume = () => { Services.Scrap.TryConsume(ScrapGrade.Mid, 2); if (v.C(p) < 0.3f) AddPart("Gasket", -1); };
+                    {
+                        bool major = v.C(p) < 0.3f;   // a cracked block needs heavy-gauge steel plate, which is industrial stock from the dam
+                        needTier = 2; need = "2 mid scrap" + (major ? ", 1 gasket, 1 " + Services.Regional.Display("heavy_steel") : "");
+                        have = () => Services.Scrap.GetScrap(ScrapGrade.Mid) >= 2 && (!major || (Parts("Gasket") > 0 && Services.Regional.Count("heavy_steel") >= 1));
+                        consume = () => { Services.Scrap.TryConsume(ScrapGrade.Mid, 2); if (major) { AddPart("Gasket", -1); Services.Regional.TryConsume("heavy_steel", 1); } };
+                    }
                     break;
                 case VPart.Battery:
                     needTier = 1; need = "a car battery";
@@ -361,21 +364,22 @@ namespace TLDOverhaul.Vehicles
                     consume = () => AddPart("Hose", -1);
                     break;
                 default:
-                    needTier = 2; need = "1 low scrap, 1 cloth";
-                    have = () => Services.Scrap.GetScrap(ScrapGrade.Low) >= 1 && GameUtil.CountInInventory("Cloth") >= 1;
-                    consume = () => { Services.Scrap.TryConsume(ScrapGrade.Low, 1); GameUtil.RemoveFromInventory("Cloth", 1); };
+                    needTier = 2; need = "1 low scrap, 1 cloth, 1 " + Services.Regional.Display("electrical_parts");
+                    have = () => Services.Scrap.GetScrap(ScrapGrade.Low) >= 1 && GameUtil.CountInInventory("Cloth") >= 1 && Services.Regional.Count("electrical_parts") >= 1;
+                    consume = () => { Services.Scrap.TryConsume(ScrapGrade.Low, 1); GameUtil.RemoveFromInventory("Cloth", 1); Services.Regional.TryConsume("electrical_parts", 1); };
                     break;
             }
             // "A novice mechanic replacing a tire takes hours and might damage the rim."
             float minutes = Mathf.Lerp(150f, 45f, Services.Skills.GetLevel01(SkillId.Mechanics));
-            GearItem tool = GameUtil.InventoryItems().Where(g => { var n = GameUtil.NameOf(g); return n == "HighQualityTools" || n == "SimpleTools"; })
+            // advanced repairs (engine, electrical) need the specialized tool kit; basic ones will do with an ordinary kit
+            GearItem tool = GameUtil.InventoryItems().Where(g => { var n = GameUtil.NameOf(g); return n == "HighQualityTools" || (needTier < 2 && n == "SimpleTools"); })
                                     .OrderByDescending(g => Services.Tools.GetPerformance(g)).FirstOrDefault();
             bool skillOk = tier >= needTier;
             bool mats = have();
             return new BenchEntry
             {
                 Label = "Repair " + p,
-                Detail = !skillOk ? "needs Mechanics " + SkillMap.Roman[needTier] : tool == null ? "needs a toolkit" : !mats ? "needs " + need : string.Format("{0}, ~{1:0} min", need, minutes),
+                Detail = !skillOk ? "needs Mechanics " + SkillMap.Roman[needTier] : tool == null ? (needTier >= 2 ? "needs the specialized tool kit" : "needs a toolkit") : !mats ? "needs " + need : string.Format("{0}, ~{1:0} min", need, minutes),
                 Enabled = skillOk && tool != null && mats,
                 Run = () =>
                 {

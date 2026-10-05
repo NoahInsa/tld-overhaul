@@ -40,6 +40,7 @@ namespace TLDOverhaul.Core
             yield return new TLDOverhaul.Weapons.WeaponsSystem();
             yield return new TLDOverhaul.Vehicles.VehiclesSystem();
             yield return new TLDOverhaul.Skiing.SkiingSystem();
+            yield return new TLDOverhaul.Exploration.ExplorationSystem();
         }
 
         public override void OnInitializeMelon()
@@ -54,6 +55,14 @@ namespace TLDOverhaul.Core
             });
 
             DebugMenu.Init();
+            SaveManager.StateLoaded += () =>
+            {
+                foreach (var sys in Systems)
+                {
+                    if (!sys.Enabled) continue;
+                    try { sys.OnStateLoaded(); } catch (Exception e) { LoggerInstance.Error("[" + sys.Name + "] OnStateLoaded: " + e.Message); }
+                }
+            };
             foreach (var s in BuildSystems())
             {
                 Systems.Add(s);
@@ -73,6 +82,7 @@ namespace TLDOverhaul.Core
                     SaveManager.ResetAll();
                     GameUtil.ResetAllClocks();
                 }
+                GameUtil.ResetAllClocks();
                 BenchLocator.Invalidate();
                 foreach (var s in Systems)
                 {

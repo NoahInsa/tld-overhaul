@@ -45,14 +45,17 @@ namespace TLDOverhaul.Core
         public static float HoursSince(string key)
         {
             float now = HoursPlayed;
+            // right after a scene load / save restore the game clock may still be settling: re-baseline instead of integrating a jump
+            if (Time.realtimeSinceStartup - _clockResetAt < 1.5f) { LastHours[key] = now; return 0f; }
             if (!LastHours.TryGetValue(key, out var last)) { LastHours[key] = now; return 0f; }
             LastHours[key] = now;
             float d = now - last;
-            return d < 0f ? 0f : d;
+            return d < 0f ? 0f : (d > 96f ? 96f : d);   // never integrate more than four days in one step
         }
 
+        private static float _clockResetAt = -99f;
         public static void ResetClock(string key) { LastHours.Remove(key); }
-        public static void ResetAllClocks() { LastHours.Clear(); }
+        public static void ResetAllClocks() { LastHours.Clear(); _clockResetAt = Time.realtimeSinceStartup; }
 
         public static void Hud(string message, bool important = false)
         {

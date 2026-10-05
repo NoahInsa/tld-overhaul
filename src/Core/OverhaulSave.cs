@@ -30,6 +30,9 @@ namespace TLDOverhaul.Core
         private static readonly List<ISaveSection> Sections = new List<ISaveSection>();
         public static string CurrentSlot { get; private set; }
 
+        /// <summary>Raised after a sidecar was read (or state was reset for a fresh game).</summary>
+        public static event Action StateLoaded;
+
         public static void Register(ISaveSection s)
         {
             if (!Sections.Contains(s)) Sections.Add(s);
@@ -85,6 +88,13 @@ namespace TLDOverhaul.Core
         public static void Read(string slot)
         {
             ResetAll();
+            GameUtil.ResetAllClocks();   // game-hour deltas must restart from the loaded save's clock
+            try { ReadInner(slot); }
+            finally { try { StateLoaded?.Invoke(); } catch (Exception e) { MelonLogger.Error("[save] StateLoaded handler: " + e.Message); } }
+        }
+
+        private static void ReadInner(string slot)
+        {
             CurrentSlot = slot;
             if (string.IsNullOrEmpty(slot)) return;
             var path = PathFor(slot);

@@ -32,11 +32,14 @@ namespace TLDOverhaul.Forge
         string IBenchProvider.Title { get { return "Smelt junk into scrap"; } }
 
         // ---- persisted ledger (Low scrap is real inventory items; the fractions carry sub-unit remainders)
+        /// <summary>Raised when metal is salvaged from the world (object name, grade, units). Exploration listens for regional materials.</summary>
+        public static event Action<string, ScrapGrade, float> Salvaged;
+
         private int _mid, _high;
         private float _fracLow, _fracMid, _fracHigh;
         private float _smeltedTotal;
 
-        private Setting<float> _wornOutBelow, _skillYieldLow, _skillYieldHigh, _industrialBonus, _minutesPerUnit, _baseMinutes, _salvageYield;
+        private Setting<float> _smallCap, _industrialCap, _wornOutBelow, _skillYieldLow, _skillYieldHigh, _industrialBonus, _minutesPerUnit, _baseMinutes, _salvageYield;
 
         // Order matters: first match wins. Names are prefab names (without GEAR_) from the game catalog.
         public static readonly List<Smeltable> Table = new List<Smeltable>
@@ -66,6 +69,8 @@ namespace TLDOverhaul.Forge
         protected override void OnInit()
         {
             Instance = this;
+            _smallCap = Cfg.F(Name, "SmallForgeBatchUnits", 10f, "Scrap units the small coastal forge can smelt in one session.");
+            _industrialCap = Cfg.F(Name, "IndustrialForgeBatchUnits", 40f, "Scrap units the large industrial forge can smelt in one session (large-batch smelting).");
             _wornOutBelow = Cfg.F(Name, "PastRepairBelow", 0.30f, "Tools and cookware below this normalized condition count as scrap-worthy.");
             _skillYieldLow = Cfg.F(Name, "YieldAtBeginnerSmith", 0.6f, "Fraction of the scrap you recover at Beginner Blacksmithing.");
             _skillYieldHigh = Cfg.F(Name, "YieldAtMasterSmith", 1.15f, "Fraction at Master. A skilled smith gets more usable material from the same junk.");
@@ -190,6 +195,16 @@ namespace TLDOverhaul.Forge
         private void Smelt(List<Batch> batches, BenchInfo bench)
         {
             if (!bench.ForgeHot) { GameUtil.Hud("The forge isn't hot enough."); return; }
+            // forge specialization: only the big industrial works takes large batches
+            float cap = bench.ForgeClass == ForgeClass.Industrial ? _industrialCap.Value : _smallCap.Value;
+            var trimmed = new List<Batch>(); float used = 0f;
+            foreach (var b in batches)
+            {
+                if (used + b.Units > cap && trimmed.Count > 0) break;
+                trimmed.Add(b); used += b.Units;
+            }
+            if (trimmed.Count < batches.Count) GameUtil.Hud("This forge can only take " + cap + " units of scrap at a time. Smelting what fits.");
+            batches = trimmed;
             float units = batches.Sum(b => b.Units);
             int mins = Mathf.RoundToInt(_baseMinutes.Value + units * _minutesPerUnit.Value);
             var snapshot = batches.Select(b => new { b.Name, b.Grade, Items = b.Items.ToList() }).ToList();
@@ -235,6 +250,7 @@ namespace TLDOverhaul.Forge
             float l = grade == ScrapGrade.Low ? units : 0, m = grade == ScrapGrade.Mid ? units : 0, h = grade == ScrapGrade.High ? units : 0;
             Deposit(l, m, h);
             GameUtil.Hud("Salvaged scrap from " + what + ".");
+            try { if (Salvaged != null) Salvaged(what, grade, units); } catch (Exception e) { PatchLog.Error("Forge.Salvaged", e); }
             Services.Skills.AddXp(SkillId.Mechanics, 1f);
         }
 

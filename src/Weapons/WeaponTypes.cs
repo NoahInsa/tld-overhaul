@@ -29,6 +29,7 @@ namespace TLDOverhaul.Weapons
         public int CraftTier;
         public bool NeedsIndustrialForge;
         public string[] Materials;          // "Name:count" gear materials
+        public string[] Regional;           // "material:units" that only exist in particular regions (exploration)
         public ScrapGrade? Scrap; public int ScrapUnits;
     }
 
@@ -42,9 +43,9 @@ namespace TLDOverhaul.Weapons
             { ModId.RecoilPad, new ModSpec { Id = ModId.RecoilPad, Name = "Recoil pad", Fits = new[] { WeaponClass.Rifle, WeaponClass.Revolver }, Tier = 1, Craftable = true, Station = BenchKind.Workbench,
                 CraftSkill = SkillId.Mending, CraftTier = 1, Materials = new[] { "Leather:1" }, Source = "loot, or crafted from leather" } },
             { ModId.ForgedReceiver, new ModSpec { Id = ModId.ForgedReceiver, Name = "Forged receiver", Fits = new[] { WeaponClass.Rifle }, Tier = 3, Craftable = true, Station = BenchKind.Forge,
-                CraftSkill = SkillId.Blacksmithing, CraftTier = 3, NeedsIndustrialForge = true, Scrap = ScrapGrade.High, ScrapUnits = 3, Source = "forged with high mechanics skill" } },
+                CraftSkill = SkillId.Blacksmithing, CraftTier = 3, NeedsIndustrialForge = true, Scrap = ScrapGrade.High, ScrapUnits = 3, Regional = new[] { "cast_iron:2" }, Source = "forged with high mechanics skill" } },
             { ModId.Suppressor, new ModSpec { Id = ModId.Suppressor, Name = "Improvised suppressor", Fits = new[] { WeaponClass.Rifle }, Tier = 3, Craftable = true, Station = BenchKind.Workbench,
-                CraftSkill = SkillId.Mechanics, CraftTier = 3, Materials = new[] { "Cloth:2" }, Scrap = ScrapGrade.Mid, ScrapUnits = 2, Source = "improvised at high mechanics; degrades fast" } },
+                CraftSkill = SkillId.Mechanics, CraftTier = 3, Materials = new[] { "Cloth:2" }, Scrap = ScrapGrade.Mid, ScrapUnits = 2, Regional = new[] { "aircraft_aluminum:1" }, Source = "improvised at high mechanics; degrades fast" } },
             { ModId.ExtendedCylinder, new ModSpec { Id = ModId.ExtendedCylinder, Name = "Extended cylinder", Fits = new[] { WeaponClass.Revolver }, Tier = 2, Source = "loot find (very rare)" } },
             { ModId.ImprovedLimbs, new ModSpec { Id = ModId.ImprovedLimbs, Name = "Improved limbs", Fits = new[] { WeaponClass.Bow }, Tier = 2, Craftable = true, Station = BenchKind.Workbench,
                 CraftSkill = SkillId.Archery, CraftTier = 3, Materials = new[] { "Hardwood:2", "GutDried:2" }, Source = "crafted at high archery + carpentry" } },

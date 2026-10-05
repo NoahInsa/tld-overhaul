@@ -61,6 +61,15 @@ namespace TLDOverhaul.Core
         float FailureChance(SkillId skill, int recipeTier, float toolPerformance);
     }
 
+    /// <summary>Exploration pull (system 12): materials that only exist in particular regions, and recipe unlocks (schematics).</summary>
+    public interface IRegionalMaterials
+    {
+        int Count(string material);
+        bool TryConsume(string material, int units);
+        string Display(string material);
+        bool HasSchematic(string key);
+    }
+
     /// <summary>Service locator. Consumers always get a working (neutral) implementation even when a system is disabled.</summary>
     public static class Services
     {
@@ -68,6 +77,7 @@ namespace TLDOverhaul.Core
         public static IToolService Tools = new NullTools();
         public static IScrapService Scrap = new NullScrap();
         public static ICraftingService Crafting = new NullCrafting();
+        public static IRegionalMaterials Regional = new NullRegional();
 
         private sealed class NullSkills : ISkillService
         {
@@ -89,6 +99,13 @@ namespace TLDOverhaul.Core
             public int GetScrap(ScrapGrade grade) => 0;
             public bool TryConsume(ScrapGrade grade, int units) => false;
             public void Add(ScrapGrade grade, int units) { }
+        }
+        private sealed class NullRegional : IRegionalMaterials
+        {
+            public int Count(string material) => 99;           // exploration disabled: nothing is region-locked
+            public bool TryConsume(string material, int units) => true;
+            public string Display(string material) => material;
+            public bool HasSchematic(string key) => true;
         }
         private sealed class NullCrafting : ICraftingService
         {
