@@ -36,6 +36,9 @@ namespace TLDOverhaul.Crafting
         /// <summary>Other systems (building) can add requirements. Return a reason string to block the recipe, or null to allow it.</summary>
         public static readonly List<Func<BlueprintData, string>> ExtraGates = new List<Func<BlueprintData, string>>();
 
+        /// <summary>The interactive-crafting system claims recipes it will judge by hand: no random failure roll or quality here.</summary>
+        public static Func<BlueprintData, bool> InteractiveClaims;
+
         public enum Outcome { Unmanaged, Failed, Succeeded }
 
         /// <summary>Called after every finished craft unit (including furniture). Receives the outcome and any new gear items found in inventory.</summary>
@@ -232,6 +235,12 @@ namespace TLDOverhaul.Crafting
 
         private Outcome ProcessManaged(CraftingOperation op, BlueprintData bp, string resultName, List<GearItem> made)
         {
+            if (InteractiveClaims != null && InteractiveClaims(bp))
+            {
+                int c; _counts.TryGetValue(resultName, out c); _counts[resultName] = c + 1;
+                return Outcome.Succeeded;
+            }
+
             var req = Requirement(bp);
             float fam = Familiarity(resultName);
             GearItem tool = null; try { tool = op.m_Tool; } catch { }
@@ -267,6 +276,10 @@ namespace TLDOverhaul.Crafting
             if (hasSkill) AwardXp(bp, skill, 1f + 0.5f * req.Tier);
             return Outcome.Succeeded;
         }
+
+        public void RefundFor(BlueprintData bp) { Refund(bp); }
+        public static bool HasConditionPublic(GearItem gi) { return HasCondition(gi); }
+        public static string WorkmanshipPublic(float q) { return Workmanship(q); }
 
         private static string Workmanship(float q)
         {
