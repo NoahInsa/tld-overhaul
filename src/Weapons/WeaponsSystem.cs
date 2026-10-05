@@ -43,6 +43,9 @@ namespace TLDOverhaul.Weapons
         private sealed class BaseStats { public float Acc, Sway, PMin, PMax, YMin, YMax, Damage; public int Clip; }
         private readonly Dictionary<int, BaseStats> _base = new Dictionary<int, BaseStats>();
 
+        /// <summary>Other systems can make aiming harder (skis): multiplier on sway.</summary>
+        public static Func<float> SwayScale;
+
         private float _statTimer;
         private float _lastSuppressedShot = -99f;
         private static Action<GameObject> _firedAction;
@@ -192,6 +195,7 @@ namespace TLDOverhaul.Weapons
             // accuracy degrades before usability: dirt and wear cost range and steadiness long before the gun stops working
             float acc = b.Acc * (1f - _accFoul.Value * rec.Fouling) * (1f - 0.25f * wear);
             float sway = b.Sway * (1f + _swayFoul.Value * rec.Fouling + 0.5f * wear);
+            if (SwayScale != null) { try { sway *= SwayScale(); } catch { } }
             float recoil = 1f;
 
             if (rec.Has(ModId.Scope))
