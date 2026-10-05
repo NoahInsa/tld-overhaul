@@ -108,6 +108,32 @@ namespace TLDOverhaul.Crafting
         }
     }
 
+    // The craft button just goes grey when a gate blocks the recipe; say why when the player highlights it. POSTFIX, throttled.
+    [HarmonyPatch(typeof(Panel_Crafting), nameof(Panel_Crafting.RefreshSelectedBlueprint))]
+    internal static class PanelCrafting_RefreshSelectedBlueprint
+    {
+        private const string Id = "Crafting.PanelCrafting_RefreshSelectedBlueprint";
+        private static string _lastShown = "";
+        private static float _lastTime;
+
+        private static void Postfix(Panel_Crafting __instance)
+        {
+            PatchLog.Fire(Id);
+            try
+            {
+                var sys = CraftingSystem.Instance;
+                var bp = __instance.SelectedBPI;
+                string reason;
+                if (sys == null || bp == null || !sys.Blocked(bp, out reason)) return;
+                string key = BlueprintInfo.ResultName(bp);
+                if (key == _lastShown && Time.unscaledTime - _lastTime < 8f) return;
+                _lastShown = key; _lastTime = Time.unscaledTime;
+                GameUtil.Hud(reason);
+            }
+            catch (Exception e) { PatchLog.Error(Id, e); }
+        }
+    }
+
     // ---- time ---------------------------------------------------------------------------------------------------------
     // Crafting time reaches the player through two vanilla entry points (the operation and the panel's preview). They may
     // call each other, so a shared depth guard makes sure the multiplier is applied exactly once, by the outermost call.

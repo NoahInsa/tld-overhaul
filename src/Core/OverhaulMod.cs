@@ -35,6 +35,7 @@ namespace TLDOverhaul.Core
             yield return new TLDOverhaul.Skills.SkillsSystem();
             yield return new TLDOverhaul.Crafting.CraftingSystem();
             yield return new TLDOverhaul.Forge.ForgeSystem();
+            yield return new TLDOverhaul.Building.BuildingSystem();
         }
 
         public override void OnInitializeMelon()

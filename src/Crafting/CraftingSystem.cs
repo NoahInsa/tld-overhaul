@@ -33,6 +33,14 @@ namespace TLDOverhaul.Crafting
         private readonly Dictionary<int, RecipeReq> _reqCache = new Dictionary<int, RecipeReq>();
         private string _lastSummary = "";
 
+        /// <summary>Other systems (building) can add requirements. Return a reason string to block the recipe, or null to allow it.</summary>
+        public static readonly List<Func<BlueprintData, string>> ExtraGates = new List<Func<BlueprintData, string>>();
+
+        public enum Outcome { Unmanaged, Failed, Succeeded }
+
+        /// <summary>Called after every finished craft unit (including furniture). Receives the outcome and any new gear items found in inventory.</summary>
+        public static readonly List<Action<CraftingOperation, Outcome, List<GearItem>>> CraftedHooks = new List<Action<CraftingOperation, Outcome, List<GearItem>>>();
+
         private Setting<float> _failBase, _failPerTier, _failSkillFalloff, _wasteFraction, _qualityJitter, _timeBeginner, _timeMaster, _familiarityHalf;
 
         public override IEnumerable<Type> PatchTypes
@@ -44,6 +52,7 @@ namespace TLDOverhaul.Crafting
                 yield return typeof(BlueprintData_CanCraftBlueprint);
                 yield return typeof(PanelCrafting_ItemPassesFilter);
                 yield return typeof(PanelCrafting_OnBeginCrafting);
+                yield return typeof(PanelCrafting_RefreshSelectedBlueprint);
                 yield return typeof(CraftingOperation_GetModifiedCraftingDuration);
                 yield return typeof(PanelCrafting_GetFinalCraftingTime);
                 yield return typeof(CraftingOperation_HandleSuccess);
@@ -94,11 +103,22 @@ namespace TLDOverhaul.Crafting
         {
             reason = null;
             var req = Requirement(bp);
-            if (!req.Skill.HasValue) return false;
-            int have = Services.Skills.GetTier(req.Skill.Value);
-            if (have >= req.Tier) return false;
-            reason = string.Format("You are not skilled enough: this needs {0} {1}.", SkillMap.Display(req.Skill.Value), SkillMap.Roman[req.Tier]);
-            return true;
+            if (req.Skill.HasValue)
+            {
+                int have = Services.Skills.GetTier(req.Skill.Value);
+                if (have < req.Tier)
+                {
+                    reason = string.Format("You are not skilled enough: this needs {0} {1}.", SkillMap.Display(req.Skill.Value), SkillMap.Roman[req.Tier]);
+                    return true;
+                }
+            }
+            foreach (var gate in ExtraGates)
+            {
+                string r;
+                try { r = gate(bp); } catch (Exception e) { PatchLog.Error("Crafting.ExtraGate", e); r = null; }
+                if (r != null) { reason = r; return true; }
+            }
+            return false;
         }
 
         /// <summary>Recipes two or more tiers above you are not yet "discovered".</summary>
@@ -189,21 +209,33 @@ namespace TLDOverhaul.Crafting
         public void AfterCraft(CraftingOperation op, HashSet<int> before)
         {
             var bp = op.Blueprint;
-            if (bp == null || before == null || !ManagedResult(bp)) return;
-
-            var req = Requirement(bp);
-            string resultName = BlueprintInfo.ResultName(bp);
-            float fam = Familiarity(resultName);
-            GearItem tool = null; try { tool = op.m_Tool; } catch { }
-            float perf = tool != null ? Services.Tools.GetPerformance(tool) : 1f;
+            if (bp == null || before == null) return;
 
             var made = new List<GearItem>();
+            string resultName = BlueprintInfo.ResultName(bp);
             foreach (var gi in GameUtil.InventoryItems())
             {
                 int id; try { id = gi.GetInstanceID(); } catch { continue; }
                 if (!before.Contains(id) && GameUtil.NameOf(gi).Equals(resultName, StringComparison.OrdinalIgnoreCase)) made.Add(gi);
             }
-            if (made.Count == 0) return;   // result went to a container or stacked into an existing item: leave it alone
+
+            Outcome outcome = Outcome.Unmanaged;
+            if (ManagedResult(bp) && made.Count > 0) outcome = ProcessManaged(op, bp, resultName, made);
+            else if (!ManagedResult(bp)) outcome = Outcome.Succeeded;   // furniture / food: no failure rolls here
+
+            foreach (var h in CraftedHooks)
+            {
+                try { h(op, outcome, made); }
+                catch (Exception e) { PatchLog.Error("Crafting.CraftedHook", e); }
+            }
+        }
+
+        private Outcome ProcessManaged(CraftingOperation op, BlueprintData bp, string resultName, List<GearItem> made)
+        {
+            var req = Requirement(bp);
+            float fam = Familiarity(resultName);
+            GearItem tool = null; try { tool = op.m_Tool; } catch { }
+            float perf = tool != null ? Services.Tools.GetPerformance(tool) : 1f;
 
             SkillId skill = req.Skill ?? SkillId.Carpentry;
             bool hasSkill = req.Skill.HasValue;
@@ -216,8 +248,9 @@ namespace TLDOverhaul.Crafting
                 Refund(bp);
                 GameUtil.Hud("The " + resultName + " comes out wrong. You salvage some of the materials.", true);
                 _lastSummary = resultName + ": failed";
-                if (hasSkill) AwardXp(bp, skill, 0.5f + 0.25f * req.Tier);
-                return;
+                AwardXp(bp, skill, 0.5f + 0.25f * req.Tier);
+                made.Clear();
+                return Outcome.Failed;
             }
 
             float q = hasSkill ? Quality(skill, req.Tier, perf, fam, true) : 1f;
@@ -232,6 +265,7 @@ namespace TLDOverhaul.Crafting
                 _lastSummary = string.Format("{0}: {1} ({2:0}%)", resultName, Workmanship(q), q * 100f);
             }
             if (hasSkill) AwardXp(bp, skill, 1f + 0.5f * req.Tier);
+            return Outcome.Succeeded;
         }
 
         private static string Workmanship(float q)

@@ -39,7 +39,7 @@ namespace TLDOverhaul.Crafting
             new object[] { "ImprovisedCrampons", SkillId.Mechanics, 1 },
             new object[] { "Arrow", SkillId.Archery, 1 }, new object[] { "ArrowShaft", SkillId.Carpentry, 0 }, new object[] { "ArrowHead", SkillId.Blacksmithing, 1 },
             new object[] { "ArrowHardened", SkillId.Archery, 2 },
-            new object[] { "Bow", SkillId.Archery, 2 },
+            new object[] { "Bow", SkillId.Archery, 2 }, new object[] { "ReclaimedWoodB", SkillId.Carpentry, 0 },
             new object[] { "RabbitskinHat", SkillId.Mending, 1 }, new object[] { "RabbitSkinMittens", SkillId.Mending, 1 },
             new object[] { "DeerSkinBoots", SkillId.Mending, 2 }, new object[] { "DeerSkinPants", SkillId.Mending, 2 },
             new object[] { "WolfSkinCape", SkillId.Mending, 2 }, new object[] { "MooseHideBag", SkillId.Mending, 2 },
