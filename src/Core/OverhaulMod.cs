@@ -33,6 +33,7 @@ namespace TLDOverhaul.Core
             yield return new TLDOverhaul.Nutrition.NutritionSystem();
             yield return new TLDOverhaul.Clothing.ClothingSystem();
             yield return new TLDOverhaul.Skills.SkillsSystem();
+            yield return new TLDOverhaul.Crafting.CraftingSystem();
         }
 
         public override void OnInitializeMelon()
