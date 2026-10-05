@@ -29,7 +29,7 @@ namespace TLDOverhaul.Core
         {
             // Order == dependency order. A system may consume services of any system listed before it.
             // (Systems are appended here as each one lands.)
-            yield break;
+            yield return new TLDOverhaul.Degradation.DegradationSystem();
         }
 
         public override void OnInitializeMelon()
