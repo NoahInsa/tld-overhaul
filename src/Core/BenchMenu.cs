@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace TLDOverhaul.Core
 {
-    public enum BenchKind { Forge, AmmoBench, Workbench, Field }
+    public enum BenchKind { Forge, AmmoBench, Workbench, Field, Vehicle }
 
     public enum ForgeClass { Small, Industrial }
 
@@ -39,6 +39,7 @@ namespace TLDOverhaul.Core
         private static readonly List<Component> Forges = new List<Component>();
         private static readonly List<Component> Ammo = new List<Component>();
         private static readonly List<Component> Work = new List<Component>();
+        private static readonly List<Component> Cars = new List<Component>();
         private static float _nextRefresh;
 
         public static void Invalidate() { _nextRefresh = 0f; }
@@ -47,12 +48,13 @@ namespace TLDOverhaul.Core
         {
             if (Time.unscaledTime < _nextRefresh) return;
             _nextRefresh = Time.unscaledTime + 8f;
-            Forges.Clear(); Ammo.Clear(); Work.Clear();
+            Forges.Clear(); Ammo.Clear(); Work.Clear(); Cars.Clear();
             try
             {
                 foreach (var f in UnityEngine.Object.FindObjectsOfType<Il2Cpp.Forge>()) Forges.Add(f);
                 foreach (var a in UnityEngine.Object.FindObjectsOfType<AmmoWorkBench>()) Ammo.Add(a);
                 foreach (var w in UnityEngine.Object.FindObjectsOfType<WorkBench>()) Work.Add(w);
+                foreach (var v in UnityEngine.Object.FindObjectsOfType<VehicleDoor>()) Cars.Add(v);
             }
             catch (Exception e) { PatchLog.Error("Core.BenchLocator", e); }
         }
@@ -69,14 +71,22 @@ namespace TLDOverhaul.Core
             Consider(Forges, BenchKind.Forge, maxDistance, ref best);
             Consider(Ammo, BenchKind.AmmoBench, maxDistance, ref best);
             Consider(Work, BenchKind.Workbench, maxDistance, ref best);
+            Consider(Cars, BenchKind.Vehicle, maxDistance, ref best);
             return best;
+        }
+
+        /// <summary>All located components of a kind (cached for a few seconds).</summary>
+        public static List<Component> All(BenchKind kind)
+        {
+            Refresh();
+            switch (kind) { case BenchKind.Forge: return Forges; case BenchKind.AmmoBench: return Ammo; case BenchKind.Vehicle: return Cars; default: return Work; }
         }
 
         public static BenchInfo Nearest(BenchKind kind, float maxDistance)
         {
             Refresh();
             BenchInfo best = null;
-            Consider(kind == BenchKind.Forge ? Forges : (kind == BenchKind.AmmoBench ? Ammo : Work), kind, maxDistance, ref best);
+            Consider(All(kind), kind, maxDistance, ref best);
             return best;
         }
 
@@ -196,7 +206,7 @@ namespace TLDOverhaul.Core
                 float w = 520f;
                 GUILayout.BeginArea(new Rect(24, Screen.height * 0.18f, w, Screen.height * 0.64f));
                 GUILayout.BeginVertical(GUI.skin.box);
-                string title = _bench.Kind == BenchKind.Field ? "Field actions" : _bench.Kind == BenchKind.Forge ? "Forge (" + _bench.ForgeClass + ")" + (_bench.ForgeHot ? "" : " - COLD") : _bench.Kind.ToString();
+                string title = _bench.Kind == BenchKind.Field ? "Field actions" : _bench.Kind == BenchKind.Vehicle ? "Vehicle" : _bench.Kind == BenchKind.Forge ? "Forge (" + _bench.ForgeClass + ")" + (_bench.ForgeHot ? "" : " - COLD") : _bench.Kind.ToString();
                 GUILayout.Label(title, _head);
                 GUILayout.Label("Up/Down select    Enter confirm    Esc / F7 close", _dim);
                 if (Rows.Count == 0) GUILayout.Label("Nothing to do here with what you are carrying.", _line);

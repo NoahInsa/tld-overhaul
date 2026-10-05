@@ -38,6 +38,7 @@ namespace TLDOverhaul.Core
             yield return new TLDOverhaul.Building.BuildingSystem();
             yield return new TLDOverhaul.Interactive.InteractiveSystem();
             yield return new TLDOverhaul.Weapons.WeaponsSystem();
+            yield return new TLDOverhaul.Vehicles.VehiclesSystem();
         }
 
         public override void OnInitializeMelon()
