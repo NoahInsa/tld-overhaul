@@ -104,9 +104,14 @@ namespace TLDOverhaul.Degradation
         // ------------------------------------------------------------------------------- wear model
 
         /// <summary>Rewrites a point of wear. Called from the GearItem.Degrade prefix.</summary>
+        /// <summary>Other systems can scale wear on items this system does not manage (weapon mods slow gun/bow wear).</summary>
+        public static Func<GearItem, float> ExtraWear;
+
         public float AdjustWear(GearItem item, float hp)
         {
-            if (hp <= 0f || item == null || !ToolProfiles.IsManagedTool(item) || !GameUtil.InGame) return hp;
+            if (hp <= 0f || item == null || !GameUtil.InGame) return hp;
+            if (ExtraWear != null) { try { hp *= ExtraWear(item); } catch { } }
+            if (!ToolProfiles.IsManagedTool(item)) return hp;
 
             var grade = ToolProfiles.For(GetGrade(item));
             float cond = Mathf.Clamp01(item.GetNormalizedCondition());

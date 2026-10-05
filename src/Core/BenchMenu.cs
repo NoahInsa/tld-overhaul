@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace TLDOverhaul.Core
 {
-    public enum BenchKind { Forge, AmmoBench, Workbench }
+    public enum BenchKind { Forge, AmmoBench, Workbench, Field }
 
     public enum ForgeClass { Small, Industrial }
 
@@ -138,15 +138,19 @@ namespace TLDOverhaul.Core
             if (Keys.Down(KeyCode.F7))
             {
                 if (_open) { _open = false; return; }
-                var b = BenchLocator.Nearest(4f);
-                if (b == null) { GameUtil.Hud("There is no forge, ammo bench or workbench within reach."); return; }
-                _bench = b; _sel = 0; _open = true; Rebuild();
+                // Near a station: station actions. Elsewhere: the "field" context (weapon upkeep and other personal actions).
+                _bench = BenchLocator.Nearest(4f) ?? new BenchInfo { Kind = BenchKind.Field };
+                _sel = 0; _open = true; Rebuild();
                 return;
             }
             if (!_open) return;
 
-            _bench = BenchLocator.Nearest(6f);
-            if (_bench == null || GameUtil.OverlayActive || TimedAction.Busy) { if (_bench == null) _open = false; return; }
+            if (_bench != null && _bench.Kind != BenchKind.Field)
+            {
+                _bench = BenchLocator.Nearest(6f);
+                if (_bench == null) { _open = false; return; }
+            }
+            if (GameUtil.OverlayActive || TimedAction.Busy) return;
 
             if (Time.unscaledTime >= _rebuildAt) Rebuild();
             if (Keys.Down(KeyCode.Escape)) { _open = false; return; }
@@ -192,7 +196,7 @@ namespace TLDOverhaul.Core
                 float w = 520f;
                 GUILayout.BeginArea(new Rect(24, Screen.height * 0.18f, w, Screen.height * 0.64f));
                 GUILayout.BeginVertical(GUI.skin.box);
-                string title = _bench.Kind == BenchKind.Forge ? "Forge (" + _bench.ForgeClass + ")" + (_bench.ForgeHot ? "" : " - COLD") : _bench.Kind.ToString();
+                string title = _bench.Kind == BenchKind.Field ? "Field actions" : _bench.Kind == BenchKind.Forge ? "Forge (" + _bench.ForgeClass + ")" + (_bench.ForgeHot ? "" : " - COLD") : _bench.Kind.ToString();
                 GUILayout.Label(title, _head);
                 GUILayout.Label("Up/Down select    Enter confirm    Esc / F7 close", _dim);
                 if (Rows.Count == 0) GUILayout.Label("Nothing to do here with what you are carrying.", _line);
