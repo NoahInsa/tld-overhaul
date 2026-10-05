@@ -34,6 +34,7 @@ namespace TLDOverhaul.Core
             yield return new TLDOverhaul.Clothing.ClothingSystem();
             yield return new TLDOverhaul.Skills.SkillsSystem();
             yield return new TLDOverhaul.Crafting.CraftingSystem();
+            yield return new TLDOverhaul.Forge.ForgeSystem();
         }
 
         public override void OnInitializeMelon()
@@ -55,7 +56,7 @@ namespace TLDOverhaul.Core
             }
 
             Cfg.SaveAll();
-            LoggerInstance.Msg("Ready. F8 = status overlay, F9 = debug menu, F10 = patch status. Patch failures: " + PatchLog.FailedCount);
+            LoggerInstance.Msg("Ready. F7 = station menu, F8 = status overlay, F9 = debug menu, F10 = patch status. Patch failures: " + PatchLog.FailedCount);
         }
 
         public override void OnSceneWasInitialized(int buildIndex, string sceneName)
@@ -67,6 +68,7 @@ namespace TLDOverhaul.Core
                     SaveManager.ResetAll();
                     GameUtil.ResetAllClocks();
                 }
+                BenchLocator.Invalidate();
                 foreach (var s in Systems)
                 {
                     if (!s.Enabled) continue;
@@ -81,6 +83,7 @@ namespace TLDOverhaul.Core
             if (Keys.Down(KeyCode.F8)) _overlay = !_overlay;
             if (Keys.Down(KeyCode.F10)) PatchLog.DumpStatus();
             DebugMenu.Tick();
+            if (GameUtil.InGame) BenchMenu.Tick();
 
             if (!GameUtil.InGame) return;
             foreach (var s in Systems)
@@ -101,6 +104,7 @@ namespace TLDOverhaul.Core
             }
             if (_overlay) DrawOverlay();
             DebugMenu.Draw();
+            BenchMenu.Draw();
         }
 
         private void DrawOverlay()
