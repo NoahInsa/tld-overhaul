@@ -71,7 +71,7 @@ namespace TLDOverhaul.Core
 
         private sealed class NullSkills : ISkillService
         {
-            public int GetTier(SkillId id) => 0;
+            public int GetTier(SkillId id) => 4; // no skills system: gates must not block
             public float GetLevel01(SkillId id) => 0.5f;
             public float GetEfficiency(SkillId id) => 1f;
             public void AddXp(SkillId id, float amount) { }

@@ -31,6 +31,7 @@ namespace TLDOverhaul.Core
             // (Systems are appended here as each one lands.)
             yield return new TLDOverhaul.Degradation.DegradationSystem();
             yield return new TLDOverhaul.Nutrition.NutritionSystem();
+            yield return new TLDOverhaul.Clothing.ClothingSystem();
         }
 
         public override void OnInitializeMelon()
