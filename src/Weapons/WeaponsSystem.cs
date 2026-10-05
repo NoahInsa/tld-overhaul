@@ -115,6 +115,11 @@ namespace TLDOverhaul.Weapons
         public override void OnSceneLoaded(string sceneName)
         {
             _base.Clear();
+            TryRegister();
+        }
+
+        private void TryRegister()
+        {
             if (_registered || !GameUtil.InGame) return;
             try
             {
@@ -164,6 +169,7 @@ namespace TLDOverhaul.Weapons
 
         public override void OnUpdate()
         {
+            if (!_registered) TryRegister();   // the scene may have initialised before the player existed
             _statTimer += Time.unscaledDeltaTime;
             if (_statTimer < 0.4f) return;
             _statTimer = 0f;
